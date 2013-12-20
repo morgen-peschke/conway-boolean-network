@@ -1,0 +1,91 @@
+#!/bin/bash
+
+function usage
+{
+    cat <<EOF
+USAGE:
+    $0 options
+
+OPTIONS
+    -f The boolean function to used to initialse the conway board. - requests a random 
+       function. Omitting this defaults to $FUNC
+
+    -r Use random start conditions for the boolean function. Defaults to $RAND
+
+    -g The number of generations to run (this program will stop if the board stagnates).
+       Defaults to $GENERATIONS
+
+    -d The delay between displayed frames. Defaults to $DELAY
+
+    -e Eternal mode. This will restart if the board stagnates or everything dies.
+       This only really makes sense if you are using either a random function or random
+       initial conditions. Defaults to $ETERNAL
+
+    -h Display this message
+
+    .  Run with default options (only valid as a single argument)
+EOF
+}
+
+function runConway
+{
+    HEIGHT=$(( $(stty size | cut -d' ' -f1) - 3))
+    WIDTH=$(( $(stty size | cut -d' ' -f2) - 3))
+
+    if [[ $FUNC -eq -1 ]]; then
+        RUNFUNC="$(( ${RANDOM} % 256 ))"
+    else
+        RUNFUNC=$FUNC
+    fi
+
+    ./conway <(./boolnet $RUNFUNC $WIDTH $HEIGHT $RAND 2> /dev/null) $HEIGHT $WIDTH $GENERATIONS 2> /dev/null| ./animate.pl $HEIGHT $WIDTH $DELAY
+}
+
+FUNC=110
+RAND=0
+GENERATIONS=100
+DELAY="0.07"
+ETERNAL=0
+
+if [[ $# -eq 0 ]]; then
+    usage
+    exit 1
+fi
+
+while getopts "hf:rg:d:e" OPTION
+do
+    case $OPTION in
+        h) usage; exit 1 ;;
+        r) RAND=1 ;;
+        e) ETERNAL=1 ;;
+        f) 
+            if [[ $OPTARG == '-' ]]; then
+                FUNC=-1
+            elif [[ "$OPTARG" -ge 0 && "$OPTARG" -lt 256 ]]; then
+                FUNC=$OPTARG
+            else
+                echo "Function must be between 0 and 255"
+                exit 1;
+            fi
+            ;;
+        g) 
+            if [[ $OPTARG == '-' ]]; then
+                GENERATIONS=-1
+            elif [[ $OPTARG -ge 0 ]]; then
+                GENERATIONS=$OPTARG
+            else
+                echo "Generations must be a positive integer or '-' for unlimited"
+            fi
+            ;;
+        d)
+            DELAY=$(echo "$OPTARG" | grep -oP "(\d*.?\d+)")
+            [[ $DELAY == "" ]] && DELAY=0
+            ;;
+    esac
+done
+
+if [[ $ETERNAL -eq 1 ]]; then
+    while true; do runConway; done
+else
+    runConway
+fi

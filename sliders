@@ -1,0 +1,2 @@
+#!/bin/bash
+./conway <(cat armada armada armada armada armada) 25 100 -1 | ./animate.pl 25 100 .025
